@@ -1,10 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { User } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
@@ -13,51 +10,27 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(data: RegisterDto) {
+  async register(data: { username: string; email: string; password: string; role?: string }) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const user = await this.prisma.user.create({
-      data: { ...data, password: hashedPassword },
+      data: {
+        username: data.username,
+        email: data.email,
+        password: hashedPassword,
+        role: data.role === 'ADMIN' ? 'ADMIN' : 'USER',
+      },
     });
-    return user;
+    return { id: user.id, username: user.username, email: user.email, role: user.role };
   }
 
-  async login(data: LoginDto) {
+  async login(data: { email: string; password: string }) {
     const user = await this.prisma.user.findUnique({ where: { email: data.email } });
-    if (!user) throw new Error('Usuário não encontrado');
+    if (!user) throw new UnauthorizedException('Credenciais inválidas');
 
-    const isPasswordValid = await bcrypt.compare(data.password, user.password);
-    if (!isPasswordValid) throw new Error('Senha inválida');
+    const isMatch = await bcrypt.compare(data.password, user.password);
+    if (!isMatch) throw new UnauthorizedException('Credenciais inválidas');
 
-    const payload = { sub: user.id, role: user.role };
+    const payload = { sub: user.id, username: user.username, role: user.role };
     return { access_token: this.jwtService.sign(payload) };
   }
-   async findOrCreateGoogleUser({googleId, email, name}){
-        
-        let user = await this.prisma.user.findUnique({
-            where: { email }
-        });
-        
-        if(!user) {
-            user = await this.prisma.user.create({
-                data: {
-                    email,
-                    name,
-                    googleId,
-                    password: Math.random().toString(36)
-                }
-            })
-        }
-
-        return user;
-    }
-     singJwtForUser(user: User) {
-        const payload = {
-            sub: user.id,
-            email: user.email,
-            role: user.role
-        }
-        return this.jwtService.sign(payload)
-    }
-
 }
-

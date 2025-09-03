@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Car } from '@prisma/client';
+// import { Car } from '@prisma/client'; // Removed because 'Car' is not exported from '@prisma/client'
 import { CreateCarDto, UpdateCarDto } from './dto/create-car.dto';
 
 @Injectable()
@@ -8,19 +8,19 @@ export class CarService {
   constructor(private prisma: PrismaService) {}
 
   // i. Criar um novo carro
-  async create(data: CreateCarDto): Promise<Car> {
+  async create(data: CreateCarDto) {
     return this.prisma.car.create({
       data,
     });
   }
 
   // Listar todos os carros
-  async findAll(): Promise<Car[]> {
+  async findAll() {
     return this.prisma.car.findMany();
   }
 
   // Buscar um carro por ID
-  async findOne(id: number): Promise<Car> {
+  async findOne(id: number) {
     const car = await this.prisma.car.findUnique({
       where: { id },
     });
@@ -32,7 +32,7 @@ export class CarService {
   }
 
   // Atualizar um carro
-  async update(id: number, data: UpdateCarDto): Promise<Car> {
+  async update(id: number, data: UpdateCarDto) {
     // garante que o carro existe antes de atualizar
     await this.findOne(id);
 
@@ -43,7 +43,7 @@ export class CarService {
   }
 
   // Deletar um carro
-  async remove(id: number): Promise<Car> {
+  async remove(id: number) {
     // garante que o carro existe antes de deletar
     await this.findOne(id);
 
