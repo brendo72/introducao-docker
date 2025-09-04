@@ -1,10 +1,16 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CarService,} from './carros.service';
 import { CreateCarDto, UpdateCarDto } from './dto/create-car.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from '../auth/jwt.guard';
+import { Roles } from './roles.decorator';
+import { UserRole } from '@prisma/client';
 // import { Car } from '@prisma/client';
 
 @ApiTags('carros')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 @Controller('carros')
 export class CarController {
   constructor(private readonly carService: CarService) {}
@@ -20,6 +26,7 @@ export class CarController {
 
   // Listar todos os itens
   @Get()
+  @Roles('ADMIN', 'USER')
   @ApiOperation({ summary: 'Lista todos os carros' })
   @ApiResponse({ status: 200, description: 'Lista de carros', type: [CreateCarDto] })
   findAll() {
@@ -28,6 +35,7 @@ export class CarController {
 
   // Buscar um item por ID
   @Get(':id')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Busca um carro por ID' })
   @ApiParam({ name: 'id', type: Number, description: 'ID do carro' })
   @ApiResponse({ status: 200, description: 'Carro encontrado', type: CreateCarDto })
@@ -38,6 +46,7 @@ export class CarController {
 
   // Atualizar um item
   @Put(':id')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Atualiza um carro pelo ID' })
   @ApiParam({ name: 'id', type: Number, description: 'ID do carro' })
   @ApiBody({ type: UpdateCarDto })
@@ -52,6 +61,7 @@ export class CarController {
 
   // Deletar um item
   @Delete(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Deleta um carro pelo ID' })
   @ApiParam({ name: 'id', type: Number, description: 'ID do carro' })
   @ApiResponse({ status: 200, description: 'Carro deletado com sucesso' })

@@ -1,7 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegisterUserDto } from './dto/register.dto';
+import { LoginResponseDto } from './dto/login-response.dtos';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -10,27 +13,62 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(data: { username: string; email: string; password: string; role?: string }) {
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-    const user = await this.prisma.user.create({
+  async validateUser(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+    const passwordValid = await bcrypt.compare(password, user.password);
+    if (!passwordValid) {
+      throw new UnauthorizedException('Senha incorreta');
+    }
+    return user;
+  }
+
+  async registerUser(userData: RegisterUserDto) {
+    const userExists = await this.prisma.user.findUnique({
+    where: {email: userData.email}
+    })
+    if(userExists){
+    throw new ConflictException("Email já está em uso!")
+  }
+
+    const hashedPassword = await bcrypt.hash(
+    userData.password, 10)
+
+
+    const newUser = await this.prisma.user.create({
       data: {
-        username: data.username,
-        email: data.email,
-        password: hashedPassword,
-        role: data.role === 'ADMIN' ? 'ADMIN' : 'USER',
-      },
-    });
-    return { id: user.id, username: user.username, email: user.email, role: user.role };
+            username: userData.name,
+            email: userData.email,
+            password: hashedPassword
+    },
+      select: {
+            id: true,
+            email: true,
+            role: true
+    }
+        })
+        
+      return newUser;
   }
 
-  async login(data: { email: string; password: string }) {
-    const user = await this.prisma.user.findUnique({ where: { email: data.email } });
-    if (!user) throw new UnauthorizedException('Credenciais inválidas');
+  async login(credentials: LoginDto): Promise<{ access_token: string }> {
+        const user = await this.validateUser(
+            credentials.email,
+            credentials.password
+        )         
+        
+        const payload = {
+            userId: user.id,
+            email: user.email,
+            role: user.role
+        }
 
-    const isMatch = await bcrypt.compare(data.password, user.password);
-    if (!isMatch) throw new UnauthorizedException('Credenciais inválidas');
+        return {
+            access_token: this.jwtService.sign(payload)
+        }
 
-    const payload = { sub: user.id, username: user.username, role: user.role };
-    return { access_token: this.jwtService.sign(payload) };
-  }
+    }
+
 }
