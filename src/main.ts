@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common'
 
 export async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,6 +12,7 @@ export async function bootstrap() {
     .setDescription('Documentação da API de usuários com NestJS + Prisma + Swagger')
     .setVersion('1.0')
     .addTag('users')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
